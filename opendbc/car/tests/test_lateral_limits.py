@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from collections import defaultdict
 import importlib
-from parameterized import parameterized_class
 import pytest
 import sys
 
@@ -22,14 +21,16 @@ MAX_LAT_JERK_UP_TOLERANCE = 0.5  # m/s^3
 JERK_MEAS_T = 0.5
 
 
-@parameterized_class('car_model', [(c,) for c in sorted(CAR_MODELS)])
+@pytest.mark.parametrize("car_model", sorted(CAR_MODELS))
 class TestLateralLimits:
-  car_model: str
 
-  @classmethod
-  def setup_class(cls):
-    CarInterface, _, _, _ = interfaces[cls.car_model]
-    CP = CarInterface.get_non_essential_params(cls.car_model)
+  @pytest.fixture(autouse=True)
+  def setup_class(self, car_model):
+    #Fixture to initialize class-level variables
+    self.car_model = car_model
+
+    CarInterface, _, _, _ = interfaces[car_model]
+    CP = CarInterface.get_non_essential_params(car_model)
 
     if CP.dashcamOnly:
       pytest.skip("Platform is behind dashcamOnly")
@@ -42,8 +43,8 @@ class TestLateralLimits:
       pytest.skip()
 
     CarControllerParams = importlib.import_module(f'opendbc.car.{CP.carName}.values').CarControllerParams
-    cls.control_params = CarControllerParams(CP)
-    cls.torque_params = get_torque_params()[cls.car_model]
+    self.control_params = CarControllerParams(CP)
+    self.torque_params = get_torque_params()[car_model]
 
   @staticmethod
   def calculate_0_5s_jerk(control_params, torque_params):
